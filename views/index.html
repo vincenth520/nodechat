@@ -1,0 +1,148 @@
+<html>
+<head>
+<title>nodechat - node+vue的聊天室</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<!-- 最新版本的 Bootstrap 核心 CSS 文件 -->
+<link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
+<script src="https://unpkg.com/vue/dist/vue.js"></script>
+<script src="http://apps.bdimg.com/libs/jquery/1.6.4/jquery.js"></script>
+<style>
+li{list-style: none;}
+.head{width: 40px;height: 40px;border-radius: 50%;overflow: hidden;float: left;}
+.head img{width:100%;height:100%;}
+.content{float:left;margin: 6px 10px;}
+.msgitem{clear: both;display: block;}
+.panel-con{height: 425px;overflow: auto;}
+.panel-body{height: 500px;overflow: hidden;position: relative;}
+input{position: absolute;bottom: 30;left: 0;border:none!important;resize:none;}
+input:active{border: none!important;}
+.useritem{clear: both;line-height: 40px;margin:5px;}
+.useritem .head{margin-right: 10px;}
+.send {
+    display: block;
+    padding: 3px 6px;
+    border: 1px solid #e1e1e1;
+    color: #7a7b7a;
+    text-decoration: none;
+    position: absolute;
+    bottom: 0;right: 0;
+}
+</style>
+</head>
+
+<body>
+	<div id="app">
+	<div class="container">
+			<h1 class="text-center">nodechat - node+vue的聊天室</h1>
+		  <div class="row">
+		        <div class="col-sm-8">
+		          <div class="panel panel-default">
+		            <div class="panel-heading">
+		              <h3 class="panel-title"><i class="glyphicon glyphicon-home"></i>聊天室</h3>
+		            </div>
+		            <div class="panel-body">
+		              	<div class="panel-con">
+							<div>
+								<li class="msgitem" v-for="msg in msgs">
+									<div class="head"><img :src="msg.image" alt=""></div>
+									<div class="content">
+										<p><b class="name" v-text="msg.name"></b></p>
+										<p class="text" v-text="msg.content"></p>
+									</div>
+								</li>
+							</div>
+		              	</div>
+						<input type="text" class="form-control" v-model="content" name="" @keyup.enter="send">
+						<a class="send" v-on:click="send" href="javascript:void(0)">发送(Enter)</a>
+		            </div>
+		          </div>
+		        </div>
+		        <div class="col-sm-4">
+		          <div class="panel panel-default">
+		            <div class="panel-heading">
+		              <h3 class="panel-title"><i class="glyphicon glyphicon-user"></i>在线用户</h3>
+		            </div>
+		            <div class="panel-body">
+		              	<div class="panel-con">
+			              <li class="useritem" v-for="user in users">
+								<div class="head"><img :src="user.image" alt=""></div>
+								<span v-text="user.name"></span>
+			              </li>
+		            	</div>
+		            </div>
+		          </div>
+		        </div>
+		      </div>
+		</div>		
+	</div>
+</body>
+</html>
+
+
+<script>
+var app = new Vue({
+  el: '#app',
+  data: {
+    msgs: [],
+    users:[],
+    content:''
+  },
+  methods:{
+  	send:function() {
+	  	ws.send(this.content);
+	  	this.content = '';
+	},
+	addMsg:function(name,image,data) {
+		this.msgs.push({name:name,image:image,content:data});
+		//console.log(this.msgs);
+		tobottom();
+	},
+	removeUser:function(user){
+		this.users.forEach((item,i)=>{
+			console.log(item.id+','+user.id);
+			if(item.id == user.id){
+				this.users.splice(i,1);
+			}
+		})
+	},
+	addUser:function(user){
+		this.users.push(user);
+	}
+   }
+})
+window.app = app;
+
+
+var ws = new WebSocket('ws://localhost:3000/ws/chat');
+ws.onmessage = function(event){
+	var data = event.data;
+	var msg = JSON.parse(data);
+	if(msg.type == 'join'){  //如果有人加入聊天室 处理在线用户并生成消息
+		app.addMsg(msg.user.name,msg.user.image,msg.data);
+		app.addUser(msg.user);	
+	}else if(msg.type == 'list'){  //获取用户列表
+		users = msg.data;
+		app.$data.users = users;
+	}else if(msg.type == 'chat'){  //收到聊天消息
+		app.addMsg(msg.user.name,msg.user.image,msg.data);
+	}else if(msg.type == 'close'){  //退出聊天室 处理在线用户并生成消息
+		app.addMsg(msg.user.name,msg.user.image,msg.data);
+		app.removeUser(msg.user);
+	}
+}
+
+ws.onclose = function(event){
+	alert('connect over');
+}
+
+ws.onerror = function(code,msg){
+	alert('error:'+code+':'+msg);
+}
+
+function tobottom(){
+	$('.panel-con').animate({
+		scrollTop: $('.panel-con div').height()
+	}, 1000);
+}
+</script>
