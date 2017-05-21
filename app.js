@@ -5,10 +5,26 @@ const Cookies = require('cookies');
 const bodyParser = require('koa-bodyparser');
 const controller = require('./controller');
 const template = require('./templating');
+const mongoose = require('mongoose');
 
 const WebSocketServer = ws.Server; 
 
 const app = new Koa();
+
+mongoose.Promise = global.Promise;
+const db = mongoose.createConnection('localhost','test');
+db.on('error',console.error.bind(console,'连接错误:'));
+db.once('open',function(){
+	console.log('链接成功')
+})
+
+const ChatSchema = new mongoose.Schema({
+  user:String,  
+  data:String,
+  time:String   
+});
+
+const ChatModel = db.model('Chat', ChatSchema);
 
 
 //打印url信息
@@ -116,12 +132,24 @@ var messageIndex = 0;
 
 function createMessage(type,user,data){
     messageIndex++;
-    return JSON.stringify({
+    var result = JSON.stringify({
         id:messageIndex,
         type:type,
         user:user,
         data:data
     });
+
+    if(type == 'chat'){
+	    var Chat = new ChatModel({user: JSON.stringify(user), data: data,time: new Date().getTime()});
+		Chat.save(function(err){
+		    if(err){
+		        console.log(err);
+		    }else{
+		        console.log('The new Chat is saved');
+		    }
+		});
+	}
+    return result;
 }
 
 

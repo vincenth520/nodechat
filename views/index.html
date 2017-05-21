@@ -113,6 +113,16 @@ var app = new Vue({
 })
 window.app = app;
 
+$.get('/api/getMsg',function(data){
+    $.each(data[0],(i,item)=>{
+    	var user = JSON.parse(item.user);
+    	app.$data.msgs.push({name:user.name,image:user.image,content:item.data});
+    })
+    setTimeout(function(){
+    	console.log($('.panel-con div').height());
+    	$('.panel-con').scrollTop($('.panel-con div').height());
+    },100)
+})
 
 var ws = new WebSocket('ws://localhost:3000/ws/chat');
 ws.onmessage = function(event){
